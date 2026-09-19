@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>dawn_xu_helloworld@163.com</email>
+		<name>Dawn Xu</name>
+	</maintainer>
+	<upstream>
+		<remote-id type="github">clash-verge-rev/clash-verge-rev</remote-id>
+	</upstream>
+	<use>
+		<flag name="tun">在 -systemd 环境下为内核二进制设置 SUID 提权，实现免守护进程的 TUN 虚拟网卡支持</flag>
+		<flag name="systemd">强制使用上游官方原生 systemd 架构（安装 service 守护单元并禁用 SUID 赋权）</flag>
+	</use>
+</pkgmetadata>
