@@ -18,7 +18,7 @@ RDEPEND="
     x11-libs/gtk+:3
     net-libs/webkit-gtk:4.1
     x11-libs/libnotify
-    dev-libs/libappindicator:3
+    dev-libs/libayatana-appindicator
     sys-apps/iproute2
 "
 
