@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>gentoo-din Overlay 使用与双仓库解耦指南</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --border-color: #334155;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #38bdf8;
+            --accent-green: #34d399;
+            --code-bg: #090d16;
+            --tag-bg: #0369a1;
+            --warning: #fbbf24;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.6;
+            padding: 2.5rem 1rem;
+        }
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+        }
+        header {
+            margin-bottom: 2.5rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 1.5rem;
+        }
+        h1 {
+            font-size: 2.2rem;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 1rem;
+        }
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.75rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+        }
+        h2 {
+            font-size: 1.4rem;
+            color: var(--text-main);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            border-bottom: 1px dashed var(--border-color);
+            padding-bottom: 0.5rem;
+        }
+        p { margin-bottom: 0.75rem; color: #cbd5e1; }
+        ul, ol { margin-left: 1.5rem; margin-bottom: 1rem; color: #cbd5e1; }
+        li { margin-bottom: 0.4rem; }
+        pre {
+            background-color: var(--code-bg);
+            border: 1px solid #1e293b;
+            border-radius: 8px;
+            padding: 1rem 1.25rem;
+            overflow-x: auto;
+            margin: 0.75rem 0 1.25rem 0;
+            font-family: "JetBrains Mono", Consolas, Monaco, monospace;
+            font-size: 0.92rem;
+            color: #e2e8f0;
+        }
+        code {
+            font-family: "JetBrains Mono", Consolas, Monaco, monospace;
+            background-color: rgba(56, 189, 248, 0.1);
+            color: var(--accent);
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+        pre code {
+            background-color: transparent;
+            color: inherit;
+            padding: 0;
+        }
+        .highlight-box {
+            background-color: rgba(56, 189, 248, 0.05);
+            border-left: 4px solid var(--accent);
+            padding: 0.85rem 1rem;
+            margin: 1rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .success-box {
+            background-color: rgba(52, 211, 153, 0.05);
+            border-left: 4px solid var(--accent-green);
+            padding: 0.85rem 1rem;
+            margin: 1rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>gentoo-din Overlay 操作使用与双仓库解耦指南</h1>
+            <div class="subtitle">适用于普通机器生产挂载与本地维护机“开发/使用物理隔离”的标准手册</div>
+        </header>
+
+        <section class="card">
+            <h2>1. 仓库定位与核心规范</h2>
+            <p><code>gentoo-din</code> 是公开托管在 GitHub 上的定制个人 Overlay，专注实现非 systemd（如 OpenRC）环境下的纯净体验与内核原生 SUID TUN 网卡能力。</p>
+            <ul>
+                <li><strong>云端源码</strong>: <code>https://github.com/dinfush/gentoo-din.git</code></li>
+                <li><strong>稳定关键字</strong>: 固化使用 <code>KEYWORDS="amd64 arm64"</code>，免去繁琐的 <code>package.accept_keywords</code> 配置。</li>
+                <li><strong>包名与覆盖原则</strong>: 严禁更改包名（不加 <code>-din</code> 后缀），完全依托 Portage 原生 <code>priority</code> 仲裁机制优先选用。</li>
+            </ul>
+        </section>
+
+        <section class="card">
+            <h2>2. 生产环境接入（普通客户端机器）</h2>
+            <p>在任意一台作为终端使用（无需写 ebuild）的 Gentoo 宿主机上，仅需接入云端 Git 仓库：</p>
+            <pre><code># 1. 注册并添加云端仓库（只需执行一次）
+sudo eselect repository add gentoo-din git https://github.com/dinfush/gentoo-din.git
+
+# 2. 确保在 /etc/portage/repos.conf/gentoo-din.conf 中配置了最高仲裁优先级
+[gentoo-din]
+location = /var/db/repos/gentoo-din
+sync-type = git
+sync-uri = https://github.com/dinfush/gentoo-din.git
+priority = 9999
+auto-sync = yes</code></pre>
+            <p>后续日常完全像使用官方 <code>guru</code> 一样执行常规同步：</p>
+            <pre><code># 单库更新
+sudo emaint sync -r gentoo-din
+
+# 随系统全量更新
+sudo emaint sync --auto</code></pre>
+        </section>
+
+        <section class="card">
+            <h2>3. 本地维护机：双仓库物理隔离模式（开发与使用互不干扰）</h2>
+            <div class="success-box">
+                <strong>为什么采用双仓库模式？</strong>
+                <p>解决“开发目录被 Portage 缓存与 root 权限文件污染”以及“系统日常使用必须保证与 GitHub 云端一致”的痛点。无需反复修改配置文件中的 <code>location</code> 路径！</p>
+            </div>
+
+            <p><strong>配置方式：保持两个配置文件共存</strong></p>
+
+            <p><strong>配置 A：系统正式源 <code>/etc/portage/repos.conf/gentoo-din.conf</code></strong>（严格拉取 GitHub 云端）：</p>
+            <pre><code>[gentoo-din]
+location = /var/db/repos/gentoo-din
+sync-type = git
+sync-uri = https://github.com/dinfush/gentoo-din.git
+priority = 9999
+auto-sync = yes</code></pre>
+
+            <p><strong>配置 B：本地开发调试源 <code>/etc/portage/repos.conf/gentoo-din-dev.conf</code></strong>（直连本地 Workspace）：</p>
+            <pre><code>[gentoo-din-dev]
+location = /home/din/Workspace/gentoo/gentoo-din
+priority = 10000
+auto-sync = no</code></pre>
+
+            <div class="highlight-box">
+                <strong>优先级逻辑说明：</strong>
+                <p>本地开发源（<code>priority = 10000</code>）> 系统云端源（<code>priority = 9999</code>）> 外部仓库（<code>0</code>）> 官方 Gentoo（<code>-1000</code>）。</p>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>4. 双仓库工作流全景图</h2>
+            <ul>
+                <li><strong>场景 1：本地编写与调试 ebuild 时</strong>
+                    <ol>
+                        <li>在 <code>~/Workspace/gentoo/gentoo-din</code> 目录下改动、新增 ebuild 并生成 digest。</li>
+                        <li>运行 <code>sudo egencache --repo=gentoo-din-dev --update</code> 刷新本地调试源缓存。</li>
+                        <li>凭借 <code>priority = 10000</code>，此时 <code>emerge</code> 测试的是本地工作区最新的改动。</li>
+                    </ol>
+                </li>
+                <li><strong>场景 2：调试完成，推送云端上生产</strong>
+                    <ol>
+                        <li>矫正工作区文件归属：<code>sudo chown -R ${USER}:${USER} .</code></li>
+                        <li>提交并推送到远端：<code>git commit && git push origin main</code>。</li>
+                    </ol>
+                </li>
+                <li><strong>场景 3：系统纯净正式拉取（验证云端体验）</strong>
+                    <ol>
+                        <li>执行 <code>sudo emaint sync -r gentoo-din</code>，系统正式将远端更新拉入 <code>/var/db/repos/gentoo-din</code>。</li>
+                        <li>平时不开发时，系统直接与 GitHub 保持绝对一致，两套环境物理隔离，干净纯粹。</li>
+                    </ol>
+                </li>
+            </ul>
+        </section>
+
+        <section class="card">
+            <h2>5. 软件安装与验证命令</h2>
+            <pre><code># 预检版本来源与 USE 状态（应显示 +tun -systemd 且来源明确）
+emerge -pv net-proxy/clash-verge-bin
+emerge -pv net-proxy/mihomo-party-bin
+
+# 直接安装
+sudo emerge -av net-proxy/clash-verge-bin</code></pre>
+        </section>
+    </div>
+</body>
+</html>
